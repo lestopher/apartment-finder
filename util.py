@@ -35,7 +35,7 @@ def post_listing_to_slack(sc, listing):
     :param sc: A slack client.
     :param listing: A record of the listing.
     """
-    desc = "{0} | {1} | {2} | {3} | <{4}>".format(listing["area"], listing["price"], listing["bart_dist"], listing["name"], listing["url"])
+    desc = "{0} | {1} | {2:.2f} | {3} | <{4}>".format(listing["area"], listing["price"], listing["bart_dist"], listing["name"], listing["url"])
     sc.api_call(
         "chat.postMessage", channel=settings.SLACK_CHANNEL, text=desc,
         username='pybot', icon_emoji=':robot_face:'
@@ -61,21 +61,12 @@ def find_points_of_interest(geotag, location):
             area = a
             area_found = True
 
-    # Check to see if the listing is near any transit stations.
-    for station, coords in settings.TRANSIT_STATIONS.items():
-        dist = coord_distance(coords[0], coords[1], geotag[0], geotag[1])
-        if (min_dist is None or dist < min_dist) and dist < settings.MAX_TRANSIT_DIST:
-            bart = station
-            near_bart = True
-
-        if (min_dist is None or dist < min_dist):
-            bart_dist = dist
-
+    bart, bart_dist = closest_transit(geotag)
     # If the listing isn't in any of the boxes we defined, check to see if the string description of the neighborhood
     # matches anything in our list of neighborhoods.
     if len(area) == 0:
         for hood in settings.NEIGHBORHOODS:
-            if hood in location.lower():
+            if hood.lower() in location.lower():
                 area = hood
 
     return {
@@ -85,3 +76,20 @@ def find_points_of_interest(geotag, location):
         "bart_dist": bart_dist,
         "bart": bart
     }
+
+def closest_transit(geotag):
+    transit_stop = ""
+    transit_stop_dist = None
+    directory = {}
+    # Check to see if the listing is near any transit stations.
+    for station, coords in settings.TRANSIT_STATIONS.items():
+        dist = coord_distance(coords[0], coords[1], geotag[0], geotag[1])
+        if dist < settings.MAX_TRANSIT_DIST:
+            directory[station] = dist
+
+    if directory:
+        transit_stop = min(directory, key=directory.get)
+        transit_stop_dist = directory[transit_stop]
+
+    return transit_stop, transit_stop_dist
+
