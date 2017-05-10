@@ -50,6 +50,7 @@ def scrape_area(area):
                                  "bathrooms": settings.BATHROOMS,
                                  "max_price": settings.MAX_PRICE,
                                  "min_price": settings.MIN_PRICE,
+                                 "min_ft2": settings.SQFT,
                              })
 
     results = []
@@ -131,4 +132,7 @@ def do_scrape():
 
     # Post each result to slack.
     for result in all_results:
-        post_listing_to_slack(sc, result)
+        try:
+            post_listing_to_slack(sc, result)
+        except TypeError:
+            continue
